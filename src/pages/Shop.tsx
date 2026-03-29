@@ -1,7 +1,7 @@
 
 import { useState } from 'react';
 import { Star, SlidersHorizontal, Grid3X3, List } from 'lucide-react';
-import { Product } from '../types';
+import type { Product } from '../types';
 
 const allProducts: Product[] = [
   { id: 1, name: "Echo Wireless Headphones", price: 4999, rating: 4.9, image: "https://picsum.photos/id/20/400/400", category: "Electronics" },
