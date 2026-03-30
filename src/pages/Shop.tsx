@@ -1,6 +1,7 @@
-
-import { useState } from 'react';
-import { Star, SlidersHorizontal, Grid3X3, List } from 'lucide-react';
+// src/pages/Shop.tsx
+import { useState, useMemo } from 'react';
+import { Star, SlidersHorizontal, Grid3X3, List, Heart } from 'lucide-react';
+import { useCart } from '../contexts/CartContext';
 import type { Product } from '../types';
 
 const allProducts: Product[] = [
@@ -15,8 +16,10 @@ const allProducts: Product[] = [
 ];
 
 const Shop = () => {
-  const [products] = useState<Product[]>(allProducts);
+  const { addToCart, addToWishlist, isInWishlist } = useCart();
+  
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
+  const [searchTerm, setSearchTerm] = useState('');
   const [priceRange, setPriceRange] = useState([500, 50000]);
   const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
   const [sortBy, setSortBy] = useState<'popularity' | 'price-low' | 'price-high' | 'newest'>('popularity');
@@ -31,61 +34,48 @@ const Shop = () => {
     }
   };
 
-  const filteredProducts = products
-    .filter(product => {
-      const matchesPrice = product.price >= priceRange[0] && product.price <= priceRange[1];
-      const matchesCategory = selectedCategories.length === 0 || 
-                             selectedCategories.includes(product.category || '');
-      return matchesPrice && matchesCategory;
-    })
-    .sort((a, b) => {
-      if (sortBy === 'price-low') return a.price - b.price;
-      if (sortBy === 'price-high') return b.price - a.price;
-      if (sortBy === 'newest') return b.id - a.id;
-      return 0; 
-    });
+  const filteredAndSortedProducts = useMemo(() => {
+    return allProducts
+      .filter(product => {
+        const matchesSearch = product.name.toLowerCase().includes(searchTerm.toLowerCase());
+        const matchesPrice = product.price >= priceRange[0] && product.price <= priceRange[1];
+        const matchesCategory = selectedCategories.length === 0 || 
+                               selectedCategories.includes(product.category || '');
+        return matchesSearch && matchesPrice && matchesCategory;
+      })
+      .sort((a, b) => {
+        if (sortBy === 'price-low') return a.price - b.price;
+        if (sortBy === 'price-high') return b.price - a.price;
+        if (sortBy === 'newest') return b.id - a.id;
+        return 0; 
+      });
+  }, [searchTerm, priceRange, selectedCategories, sortBy]);
 
   return (
     <div className="max-w-7xl mx-auto px-6 py-10">
-      <div className="flex justify-between items-center mb-10">
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 mb-10">
         <div>
           <h1 className="text-4xl font-semibold tracking-tight">Shop</h1>
-          <p className="text-zinc-600 mt-1">Showing {filteredProducts.length} results</p>
+          <p className="text-zinc-600 mt-1">Showing {filteredAndSortedProducts.length} results</p>
         </div>
 
-        <div className="flex items-center gap-4">
-          <select 
-            value={sortBy}
-            onChange={(e) => setSortBy(e.target.value as any)}
-            className="bg-white border border-zinc-200 rounded-2xl px-5 py-3 text-sm focus:outline-none focus:border-[#00D4C8]"
-          >
-            <option value="popularity">Sort by Popularity</option>
-            <option value="price-low">Price: Low to High</option>
-            <option value="price-high">Price: High to Low</option>
-            <option value="newest">Newest First</option>
-          </select>
-
-          <div className="flex border border-zinc-200 rounded-2xl overflow-hidden">
-            <button 
-              onClick={() => setViewMode('grid')}
-              className={`p-3 ${viewMode === 'grid' ? 'bg-zinc-900 text-white' : 'hover:bg-zinc-100'}`}
-            >
-              <Grid3X3 size={20} />
-            </button>
-            <button 
-              onClick={() => setViewMode('list')}
-              className={`p-3 ${viewMode === 'list' ? 'bg-zinc-900 text-white' : 'hover:bg-zinc-100'}`}
-            >
-              <List size={20} />
-            </button>
-          </div>
+        {/* Search Bar */}
+        <div className="relative w-full md:w-96">
+          <input
+            type="text"
+            placeholder="Search products..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="w-full bg-white border border-zinc-200 rounded-2xl py-3 pl-12 pr-4 focus:outline-none focus:border-[#00D4C8]"
+          />
+          <SlidersHorizontal className="absolute left-4 top-3.5 text-zinc-400" size={20} />
         </div>
       </div>
 
       <div className="flex gap-10">
         {/* Sidebar Filters */}
-        <div className="w-72 flex-shrink-0">
-          <div className="sticky top-24">
+        <div className="w-72 flex-shrink-0 hidden lg:block">
+          <div className="sticky top-28">
             <div className="flex items-center justify-between mb-8">
               <h3 className="font-semibold text-lg flex items-center gap-2">
                 <SlidersHorizontal size={20} />
@@ -95,6 +85,7 @@ const Shop = () => {
                 onClick={() => {
                   setSelectedCategories([]);
                   setPriceRange([500, 50000]);
+                  setSearchTerm('');
                 }}
                 className="text-sm text-zinc-500 hover:text-zinc-900"
               >
@@ -139,76 +130,89 @@ const Shop = () => {
                 ))}
               </div>
             </div>
-
-            {/* Rating Filter */}
-            <div>
-              <h4 className="font-medium mb-4">Rating</h4>
-              <div className="space-y-3">
-                {[4, 3, 2].map((minRating) => (
-                  <div key={minRating} className="flex items-center gap-2 text-sm">
-                    <div className="flex">
-                      {Array.from({ length: 5 }).map((_, i) => (
-                        <Star 
-                          key={i} 
-                          size={16} 
-                          className={i < minRating ? "fill-amber-400 text-amber-400" : "text-zinc-200"} 
-                        />
-                      ))}
-                    </div>
-                    <span className="text-zinc-500">&amp; above</span>
-                  </div>
-                ))}
-              </div>
-            </div>
           </div>
         </div>
 
-        {/* Products Grid */}
+        {/* Products Section */}
         <div className="flex-1">
-          {viewMode === 'grid' ? (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
-              {filteredProducts.map((product) => (
-                <div 
-                  key={product.id}
-                  className="bg-white border border-zinc-100 rounded-3xl overflow-hidden group hover:shadow-xl transition-all"
-                >
-                  <div className="relative aspect-square">
-                    <img 
-                      src={product.image} 
-                      alt={product.name}
-                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-                    />
-                  </div>
-                  <div className="p-6">
-                    <h3 className="font-medium text-lg leading-tight mb-3 line-clamp-2">{product.name}</h3>
-                    
-                    <div className="flex items-center gap-1 mb-4">
-                      {Array.from({ length: 5 }).map((_, i) => (
-                        <Star 
-                          key={i} 
-                          size={18} 
-                          className={i < Math.floor(product.rating) ? "fill-amber-400 text-amber-400" : "text-zinc-200"} 
-                        />
-                      ))}
-                      <span className="text-sm text-zinc-500 ml-2">{product.rating}</span>
-                    </div>
+          <div className="flex justify-between items-center mb-8">
+            <select 
+              value={sortBy}
+              onChange={(e) => setSortBy(e.target.value as any)}
+              className="bg-white border border-zinc-200 rounded-2xl px-5 py-3 text-sm focus:outline-none focus:border-[#00D4C8]"
+            >
+              <option value="popularity">Sort by Popularity</option>
+              <option value="price-low">Price: Low to High</option>
+              <option value="price-high">Price: High to Low</option>
+              <option value="newest">Newest First</option>
+            </select>
 
-                    <div className="flex items-center justify-between">
-                      <span className="text-2xl font-semibold">₹{product.price.toLocaleString('en-IN')}</span>
-                      <button className="bg-zinc-900 hover:bg-black text-white px-6 py-3 rounded-2xl text-sm font-medium transition-colors">
-                        Add to Cart
-                      </button>
-                    </div>
+            <div className="flex border border-zinc-200 rounded-2xl overflow-hidden">
+              <button 
+                onClick={() => setViewMode('grid')}
+                className={`p-3 ${viewMode === 'grid' ? 'bg-zinc-900 text-white' : 'hover:bg-zinc-100'}`}
+              >
+                <Grid3X3 size={20} />
+              </button>
+              <button 
+                onClick={() => setViewMode('list')}
+                className={`p-3 ${viewMode === 'list' ? 'bg-zinc-900 text-white' : 'hover:bg-zinc-100'}`}
+              >
+                <List size={20} />
+              </button>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
+            {filteredAndSortedProducts.map((product) => (
+              <div 
+                key={product.id}
+                className="bg-white border border-zinc-100 rounded-3xl overflow-hidden group hover:shadow-xl transition-all"
+              >
+                <div className="relative aspect-square">
+                  <img 
+                    src={product.image} 
+                    alt={product.name}
+                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                  />
+                  <button
+                    onClick={() => addToWishlist(product)}
+                    className="absolute top-4 right-4 p-2.5 bg-white rounded-full shadow-md hover:scale-110 transition-transform"
+                  >
+                    <Heart 
+                      size={20} 
+                      className={isInWishlist(product.id) ? "fill-red-500 text-red-500" : "text-zinc-400"} 
+                    />
+                  </button>
+                </div>
+                
+                <div className="p-6">
+                  <h3 className="font-medium text-lg leading-tight mb-2 line-clamp-2">{product.name}</h3>
+                  
+                  <div className="flex items-center gap-1 mb-4">
+                    {Array.from({ length: 5 }).map((_, i) => (
+                      <Star 
+                        key={i} 
+                        size={18} 
+                        className={i < Math.floor(product.rating) ? "fill-amber-400 text-amber-400" : "text-zinc-200"} 
+                      />
+                    ))}
+                    <span className="text-sm text-zinc-500 ml-2">{product.rating}</span>
+                  </div>
+
+                  <div className="flex items-center justify-between">
+                    <span className="text-2xl font-semibold">₹{product.price.toLocaleString('en-IN')}</span>
+                    <button 
+                      onClick={() => addToCart(product)}
+                      className="bg-zinc-900 hover:bg-black text-white px-6 py-3 rounded-2xl text-sm font-medium transition-colors"
+                    >
+                      Add to Cart
+                    </button>
                   </div>
                 </div>
-              ))}
-            </div>
-          ) : (
-            <div className="space-y-6">
-             
-              <p className="text-center text-zinc-500 py-20">List view coming soon.</p>
-            </div>
-          )}
+              </div>
+            ))}
+          </div>
         </div>
       </div>
     </div>
