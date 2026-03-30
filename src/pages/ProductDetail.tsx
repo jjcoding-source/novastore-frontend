@@ -2,21 +2,9 @@
 import { useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { Star, Heart, ShoppingCart, Plus, Minus, ArrowLeft } from 'lucide-react';
-import type { Product } from '../types';
+import { useCart } from '../contexts/CartContext';
 
-const product: Product & {
-  description: string;
-  specs: string[];
-  reviews: Array<{
-    id: number;
-    name: string;
-    rating: number;
-    comment: string;
-    date: string;
-  }>;
-  images: string[];
-  colors: string[];
-} = {
+const product = {
   id: 1,
   name: "Echo Wireless Headphones",
   price: 4999,
@@ -56,18 +44,34 @@ const product: Product & {
   colors: ["Black", "White", "Blue"]
 };
 
+const relatedProducts = [
+  { id: 2, name: "Urban Sneakers", price: 2299, rating: 4.8, image: "https://picsum.photos/id/21/400/400" },
+  { id: 3, name: "Smart Fitness Watch", price: 7499, rating: 4.7, image: "https://picsum.photos/id/60/400/400" },
+  { id: 6, name: "Wireless Earbuds", price: 2799, rating: 4.8, image: "https://picsum.photos/id/201/400/400" },
+];
+
 const ProductDetail = () => {
   const { id } = useParams();
+  const { addToCart, addToWishlist, isInWishlist } = useCart();
+
   const [selectedImage, setSelectedImage] = useState(0);
   const [quantity, setQuantity] = useState(1);
   const [selectedColor, setSelectedColor] = useState(product.colors[0]);
   const [activeTab, setActiveTab] = useState<'description' | 'specs' | 'reviews'>('description');
 
-  const relatedProducts: Product[] = [
-    { id: 2, name: "Urban Sneakers", price: 2299, rating: 4.8, image: "https://picsum.photos/id/21/400/400" },
-    { id: 3, name: "Smart Fitness Watch", price: 7499, rating: 4.7, image: "https://picsum.photos/id/60/400/400" },
-    { id: 6, name: "Wireless Earbuds", price: 2799, rating: 4.8, image: "https://picsum.photos/id/201/400/400" },
-  ];
+  const handleAddToCart = () => {
+    addToCart({
+      id: product.id,
+      name: product.name,
+      price: product.price,
+      image: product.images[0],
+      color: selectedColor
+    }, quantity);
+  };
+
+  const handleAddToWishlist = () => {
+    addToWishlist(product);
+  };
 
   return (
     <div className="max-w-7xl mx-auto px-6 py-12">
@@ -127,8 +131,15 @@ const ProductDetail = () => {
                 <span className="text-zinc-600">{product.rating} • 238 reviews</span>
               </div>
             </div>
-            <button className="p-3 hover:bg-zinc-100 rounded-2xl transition-colors">
-              <Heart size={26} />
+            
+            <button 
+              onClick={handleAddToWishlist}
+              className="p-3 hover:bg-zinc-100 rounded-2xl transition-colors"
+            >
+              <Heart 
+                size={26} 
+                className={isInWishlist(product.id) ? "fill-red-500 text-red-500" : "text-zinc-400"} 
+              />
             </button>
           </div>
 
@@ -170,7 +181,9 @@ const ProductDetail = () => {
               >
                 <Minus size={20} />
               </button>
-              <div className="px-8 font-medium text-lg">{quantity}</div>
+              <div className="px-8 font-medium text-lg min-w-[40px] text-center">
+                {quantity}
+              </div>
               <button 
                 onClick={() => setQuantity(quantity + 1)}
                 className="p-4 hover:bg-zinc-100 rounded-r-2xl transition-colors"
@@ -182,7 +195,10 @@ const ProductDetail = () => {
 
           {/* Action Buttons */}
           <div className="flex flex-col sm:flex-row gap-4 mb-12">
-            <button className="flex-1 bg-[#00D4C8] hover:bg-[#00B3A8] text-white py-5 rounded-2xl font-semibold text-lg flex items-center justify-center gap-3 transition-colors">
+            <button 
+              onClick={handleAddToCart}
+              className="flex-1 bg-[#00D4C8] hover:bg-[#00B3A8] text-white py-5 rounded-2xl font-semibold text-lg flex items-center justify-center gap-3 transition-colors"
+            >
               <ShoppingCart size={24} />
               Add to Cart
             </button>
